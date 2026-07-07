@@ -1,0 +1,450 @@
+卷猫先生，你这个判断是对的。现在**不要先做字段渲染**，也不要继续只在某个 HTML 副本里调样式。下一步应该先让 Codex **把渲染底座找出来、画清楚、定权属**。
+
+我看图里的红框区域，实际不是单一页面，而像一个“工作台渲染面”：
+
+```text
+外层应用壳：师维顶栏 / 全局入口 / 用户状态
+工作台壳：备课室标题 / 工具栏 / 左侧单元树 / 右侧辅助栏 / 底部小教输入
+主渲染面：红框内的备课本工作区
+内容渲染器：中间教案正文、右侧大屏/材料、小教上下文、折叠区
+```
+
+所以你说“整个壳也都是渲染出来的”是对的，但它们不是同一层渲染。现在必须先分清：
+
+```text
+谁负责布局？
+谁负责读取 ViewModel？
+谁负责渲染教案正文？
+谁负责右栏？
+谁负责小教输入？
+谁能改内容？
+谁只显示内容？
+```
+
+---
+
+# 1. 当前最优动作
+
+下一步应该开一条渲染线，但第一轮只做审计，不改代码：
+
+```text
+R220A_RENDER_SUBSTRATE_AND_SHELL_LAYER_AUDIT
+```
+
+目标不是“做新页面”，而是回答：
+
+```text
+当前真正的渲染底座在哪里？
+R97B 静态页和真实壳层渲染之间是什么关系？
+红框内这个 canvas / render surface 到底由哪些函数、route、ViewModel 和 renderer 组成？
+single_lesson_template 应该从哪里进入？
+```
+
+---
+
+# 2. 为什么要先找渲染底座
+
+因为你现在的问题不是“教案数据没有”，而是：
+
+```text
+数据从后端出来以后，被哪些壳层、哪些 renderer、哪些旧模板、哪些 fallback 重新包装了？
+```
+
+如果不先找底座，后面会继续出现：
+
+```text
+自由备课一个 renderer
+上传备课一个 renderer
+R97B 一套 HTML
+真实壳层一套 state
+右栏自己再拼一套
+小教上下文又接另一套
+```
+
+这就是之前越修越乱的原因。
+
+---
+
+# 3. 渲染层应该分四层
+
+建议以后统一叫：
+
+```text
+Layer 0：App Shell
+Layer 1：Prep Room Workspace Shell
+Layer 2：Render Surface / Canvas
+Layer 3：Lesson Content Renderer
+```
+
+## Layer 0：App Shell
+
+包括：
+
+```text
+师维 logo
+顶部全局导航
+用户状态
+搜索
+通知
+全局模式切换
+```
+
+它不应该知道教学设计细节。
+
+---
+
+## Layer 1：Prep Room Workspace Shell
+
+包括：
+
+```text
+备课室标题
+左侧单元树
+右侧辅助栏
+底部小教输入
+工具栏
+当前工作状态
+```
+
+它知道：
+
+```text
+当前课题
+当前模式
+当前 ViewModel state
+当前右栏内容
+当前小教上下文
+```
+
+但它不应该生成教学正文。
+
+---
+
+## Layer 2：Render Surface / Canvas
+
+也就是你红框里的主区域。
+
+它负责：
+
+```text
+加载哪一种工作内容
+安排左中右区域
+提供滚动容器
+维持主舞台宽度
+管理当前阅读位置
+处理当前 episode / block 选中状态
+```
+
+它是“容器”，不是教学内容生成器。
+
+---
+
+## Layer 3：Lesson Content Renderer
+
+它负责把：
+
+```text
+single_lesson_template
+```
+
+渲染成：
+
+```text
+本课依据
+学情分析
+教学目标
+重难点
+教学准备
+教学过程
+学习单与评价
+后记
+```
+
+这一层是后续字段渲染、小教修改、导出预览的基础。
+
+---
+
+# 4. 当前必须先定一个原则
+
+```text
+后端只产出 ViewModel / single_lesson_template。
+前端 renderer 只渲染，不推理教学内容。
+```
+
+也就是说，渲染层不能再干这些事：
+
+```text
+生成学情
+补目标
+拼教师话术
+兜底教学环节
+生成小教建议
+判断课型
+```
+
+它只能根据 ViewModel 显示：
+
+```text
+已有内容
+来源状态
+折叠状态
+待教师确认
+source_gap
+provisional candidate
+```
+
+---
+
+# 5. 字段渲染先别接
+
+你说“字段渲染可以等主壳的渲染定义定下来之后再考虑”，这个判断正确。
+
+顺序应该是：
+
+```text
+先定渲染底座
+再定 single_lesson_template 如何进入壳层
+再定 block_id / field_path / render_slot
+最后再接字段级渲染和小教修改
+```
+
+如果现在先做字段渲染，会导致：
+
+```text
+字段知道自己要显示
+但不知道应该显示在哪个壳层、哪个块、哪个阅读模式
+```
+
+又会乱。
+
+---
+
+# 6. 下一步给 Codex 的任务
+
+你可以直接发这段：
+
+```text
+当前不要继续改 R97B 页面样式，也不要继续做字段渲染。
+先执行：
+
+1013R_R220A_RENDER_SUBSTRATE_AND_SHELL_LAYER_AUDIT
+
+目标：
+只读审计当前备课室真实渲染底座，画清楚 App Shell、Prep Room Workspace Shell、Render Surface / Canvas、Lesson Content Renderer 四层之间的关系。
+本轮不改业务代码、不改 renderer、不接字段渲染、不接小教修改。
+
+背景：
+当前红框内是一个类似 canvas / render surface 的工作区，后端 ViewModel 会根据状态渲染到其中。
+项目里曾经打过渲染底座，但现在 R97B 静态页、真实壳层、R103 route、R201 lean chain、右栏、小教输入之间关系不清。
+必须先找到真实渲染底座，再规划如何把 single_lesson_template 接进去。
+
+边界：
+- 不修改 R103 / R114 / R200 / R97B 业务代码
+- 不修改真实 renderer
+- 不改 R21/R36
+- 不 formal apply
+- 不写数据库 / 飞书 / 记忆
+- 不生成 PPTX/PDF/DOCX
+- 不进入 R95
+- 不接小教真实修改
+- 不接字段级渲染
+- 不新增模型调用
+
+必须盘点：
+
+1. App Shell
+   - 顶部全局导航在哪里定义
+   - 全局状态从哪里来
+   - 哪些文件负责 app shell 渲染
+
+2. Prep Room Workspace Shell
+   - 备课室标题、工具栏、左侧单元树、右侧栏、底部小教输入在哪里定义
+   - 当前工作状态 view state 有哪些
+   - uploaded_lesson_readonly_preview / uploaded_lesson_entry_preview / lean canary 状态如何进入壳层
+
+3. Render Surface / Canvas
+   - 红框内主渲染区域对应哪些 DOM / template / function
+   - 是否有 renderLayer / canvas / stage / workspace container
+   - 左中右区域如何挂载
+   - 哪些 route / ViewModel 决定主舞台显示内容
+
+4. Lesson Content Renderer
+   - 自由备课正文 renderer 在哪里
+   - 上传备课正文 renderer 在哪里
+   - R97B_P2 的 shared renderer 是否已经进入真实路径
+   - single_lesson_template 是否已经有统一入口
+   - renderProcessStep / renderBackendP6TemplateStep / renderUnifiedLessonProcessStep 的当前权属
+
+5. Right Rail
+   - 右侧大屏 / 材料 / 小教辅助栏由谁渲染
+   - 是否仍有旧 P6 / legacy 右栏内容
+   - 右栏是否能根据 current episode 更新
+
+6. Bottom Xiaojiao
+   - 底部小教输入由谁渲染
+   - 小教上下文从哪里取
+   - 当前是否能读取 selected episode / field_path / block_id
+
+7. ViewModel / Route
+   - 哪些后端 route 提供 shell state
+   - 哪些 route 提供 readonly preview
+   - R201F lean canary metadata 是否传到壳层
+   - feature flag / preview_engine 在渲染层是否可见
+
+必须输出：
+
+- r220a_render_substrate_inventory.md
+- r220a_shell_layer_map.json
+- r220a_render_surface_contract.md
+- r220a_viewmodel_to_render_entry_map.json
+- r220a_renderer_function_inventory.md
+- r220a_right_rail_and_xiaojiao_render_audit.md
+- r220a_static_vs_real_shell_gap_report.md
+- r220a_risk_assessment.md
+- validate_1013R_R220A_render_substrate_audit_result.json
+
+PASS 条件：
+- 四层壳结构被清楚定义
+- 真实 render surface 入口被定位
+- App Shell / Workspace Shell / Render Surface / Lesson Renderer 权属清楚
+- single_lesson_template 应该接入的位置被明确
+- 当前静态页和真实壳层差异被列出
+- 不改任何业务代码
+- 不接字段渲染
+- 不接小教修改
+- 不 formal apply
+```
+
+---
+
+# 7. R220A 之后怎么走
+
+## 如果 R220A 通过
+
+进入：
+
+```text
+R220B_RENDER_SURFACE_AND_SINGLE_LESSON_TEMPLATE_BINDING_CONTRACT
+```
+
+目标：
+
+```text
+定义 single_lesson_template 如何进入真实 render surface。
+```
+
+只定合同，不急着改。
+
+---
+
+## R220C 才做只读接入
+
+```text
+R220C_SINGLE_LESSON_TEMPLATE_REAL_RENDER_SURFACE_READONLY_BINDING
+```
+
+目标：
+
+```text
+用 R201F lean chain 的 single_lesson_template
+在真实 render surface 中只读显示。
+```
+
+仍然不保存、不导出、不 formal apply。
+
+---
+
+## R220D 做教师阅读 smoke
+
+```text
+R220D_RENDERED_LESSON_TEACHER_READABILITY_SMOKE
+```
+
+目标：
+
+```text
+老师看到的页面是否像一个可读教案，
+而不是壳层面板。
+```
+
+---
+
+## R220E 后才考虑字段渲染
+
+```text
+R220E_FIELD_RENDER_SLOT_AND_BLOCK_ID_BINDING
+```
+
+这一步才接：
+
+```text
+field_path
+block_id
+render_slot
+editable target
+xiaojiao target anchor
+```
+
+也就是你说的“字段渲染”。
+
+---
+
+# 8. 渲染线和当前主线怎么并行
+
+当前主线是：
+
+```text
+R201F → R201G
+```
+
+渲染线可以并行做：
+
+```text
+R220A → R220B
+```
+
+但不要让 R220A 改代码。
+它只负责把壳层结构找清楚。
+
+等 R201G 和 R220B 都清楚后，再接：
+
+```text
+R220C
+```
+
+这样最稳。
+
+---
+
+# 9. 当前整体规划
+
+```text
+主链：
+R201F canary 已完成
+→ R201G 教师可读性 smoke
+
+渲染线：
+R220A 找渲染底座
+→ R220B 定 single_lesson_template 接入合同
+→ R220C 真实 render surface 只读绑定
+→ R220D 教师阅读 smoke
+→ R220E 字段渲染与小教编辑锚点
+
+小教线：
+R210A 控制合同可并行
+→ 等 R220E 后再做小教 shadow patch
+```
+
+---
+
+# 10. 最终判断
+
+你的感觉是对的：
+
+```text
+现在不要直接做字段渲染。
+也不要继续在 R97B 静态页里改样式。
+应该先找到真实渲染底座。
+```
+
+一句话：**先把“壳如何渲染内容”搞清楚，再决定“字段如何进入壳”。**
