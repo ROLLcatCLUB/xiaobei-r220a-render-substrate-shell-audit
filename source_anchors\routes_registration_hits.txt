@@ -1,0 +1,4 @@
+﻿16:from . import prep_room_render_shell_registry_1013L_R0
+17:from . import prep_room_main_shell_fetch_adapter_1013L_R5
+195:        prep_room_render_shell_registry_1013L_R0.register_routes(bp, _cors_preflight)
+196:        prep_room_main_shell_fetch_adapter_1013L_R5.register_routes(bp, _cors_preflight)
