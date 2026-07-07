@@ -1,0 +1,47 @@
+{
+  "package": "1013R_R220A_RENDER_SUBSTRATE_AND_SHELL_LAYER_AUDIT",
+  "created_at": "2026-07-08",
+  "purpose": "Small GitHub review package for GPT planning before R97B shell-layer implementation.",
+  "included_files": [
+    "README_FOR_GPT_REVIEW.md",
+    "R220A_RENDER_SUBSTRATE_AND_SHELL_LAYER_AUDIT.md",
+    "R220A_RENDER_SUBSTRATE_AND_SHELL_LAYER_AUDIT.json",
+    "GPT_REVIEW_PROMPT_R220A.md",
+    "PACKAGE_MANIFEST.json",
+    "PACKAGE_FILE_INDEX.txt",
+    "SHA256SUMS.txt",
+    "ZIP_SHA256.txt",
+    "LOCAL_VALIDATION.md",
+    "source_anchors/routes_registration_hits.txt",
+    "source_anchors/1013L_R0_registry_hits.txt",
+    "source_anchors/1013L_R5_adapter_hits.txt",
+    "source_anchors/R97B_backend_preview_entrypoints.txt",
+    "source_anchors/R97B_key_functions_excerpt.txt",
+    "source_anchors/prep-room-render-surface-map.md",
+    "source_anchors/1013R_R25_four_level_frame_implementation_map.md",
+    "source_anchors/1013R_R30_visible_frame_connector.md",
+    "source_anchors/1013R_R108_prep_room_import_shell_handoff_20260705.md",
+    "source_anchors/1013L_M1_report.md",
+    "source_anchors/1013L_R36_report.md",
+    "input/R220A_UPSTREAM_BRIEF.txt"
+  ],
+  "excluded": [
+    "main xiaobei-core repository history",
+    "dirty worktree changes outside this package",
+    "environment files",
+    "tokens or secrets",
+    "student personal data",
+    "database dumps",
+    "full generated browser profiles"
+  ],
+  "boundary": {
+    "readonly_audit_only": true,
+    "main_project_pushed": false,
+    "r97b_modified": false,
+    "r21_modified": false,
+    "r36_modified": false,
+    "r100_p1_promoted": false,
+    "formal_apply": false,
+    "provider_or_model_call_added": false
+  }
+}
