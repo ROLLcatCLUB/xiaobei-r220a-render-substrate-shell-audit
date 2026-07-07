@@ -1,0 +1,26 @@
+﻿12:VIEWMODEL_ROUTE = "/api/prep-room/main-shell/viewmodel"
+13:STATE_VIEWMODEL_ROUTE = "/api/prep-room/main-shell/viewmodel/state/<state_id>"
+53:def state_fetch_adapters() -> list[dict[str, Any]]:
+59:            "render_slot": "stage_body",
+70:            "render_slot": "stage_body",
+81:            "render_slot": "stage_body",
+89:            "state_id": "uploaded_lesson_readonly_preview",
+91:            "active_capability": "uploaded_lesson_readonly_preview",
+92:            "render_slot": "stage_body",
+93:            "readonly_endpoint": "/api/prep-room/main-shell/viewmodel/state/uploaded_lesson_readonly_preview",
+104:            "state_id": "uploaded_lesson_entry_preview",
+106:            "active_capability": "uploaded_lesson_entry_preview",
+107:            "render_slot": "stage_body",
+108:            "readonly_endpoint": "/api/prep-room/main-shell/viewmodel/state/uploaded_lesson_entry_preview",
+112:            "adapter_status": "preview_only_no_write",
+118:            "render_slot": "stage_body",
+129:            "render_slot": "stage_overlay",
+140:            "render_slot": "stage_body",
+151:            "render_slot": "stage_body",
+162:    adapters = state_fetch_adapters()
+180:            "full_shell_viewmodel": VIEWMODEL_ROUTE,
+181:            "state_viewmodel": STATE_VIEWMODEL_ROUTE,
+216:    adapters = {item["state_id"]: item for item in state_fetch_adapters()}
+240:def register_routes(bp, cors_preflight):
+241:    @bp.route(VIEWMODEL_ROUTE, methods=["GET", "OPTIONS"])
+247:    @bp.route(STATE_VIEWMODEL_ROUTE, methods=["GET", "OPTIONS"])
