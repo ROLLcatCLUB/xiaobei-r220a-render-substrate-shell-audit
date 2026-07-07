@@ -1,0 +1,16 @@
+﻿10:REGISTRY_ROUTE = "/api/prep-room/render-shell/registry"
+11:STATE_ROUTE = "/api/prep-room/render-shell/state/<state_id>"
+17:        "render_stage_registry_created": True,
+61:def render_stage_registry() -> dict[str, Any]:
+155:        "registry_id": "render_stage_registry_1013L_R0",
+157:        "shell_shape": {
+158:            "top_shell_persistent": True,
+160:            "bottom_agent_bar_persistent": True,
+161:            "content_pages_are_render_stage_states": True,
+162:            "standalone_static_pages_are_rollback_or_review_artifacts_only": True,
+266:        "render_stage_registry": render_stage_registry(),
+277:        "registry": render_stage_registry(),
+285:    registry = render_stage_registry()
+305:def register_routes(bp, cors_preflight):
+306:    @bp.route(REGISTRY_ROUTE, methods=["GET", "OPTIONS"])
+312:    @bp.route(STATE_ROUTE, methods=["GET", "OPTIONS"])
