@@ -1,0 +1,513 @@
+﻿===== R97B uploaded lesson route and endpoint candidates, around lines 26942-27045 =====
+  (() => {
+    const STAGE = "1013R_R108_WIRE_R97B_IMPORT_MODAL_TO_MARKITDOWN_BACKEND_ROUTE";
+    const ROUTE = "/api/prep-room/uploaded-lesson-document-preview";
+    const BACKEND_EXTS = new Set(["docx", "pdf"]);
+    const R97B_STATIC_BASELINE_RESIDUE_RE = /色彩的渐变|渐变的节奏|看见渐变|三格试色|颜色小路|5格渐变|五格渐变|R97B_current_color_gradient_baseline/;
+    const R97B_QINGLV_UPLOAD_RE = /青绿|石青|石绿|千里江山|矿物颜料|中国色/;
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[ch]));
+    }
+
+    function teacherText(value, sectionId = "") {
+      let text = String(value ?? "");
+      if (sectionId === "basis") {
+        text = text
+          .replace(/([《][^》]{1,80}[》])\s*[（(]\s*\d{1,2}\s*[）)](?=\s*[；;，,。]|$)/g, "$1")
+          .replace(/[（(]\s*\d{1,2}\s*[）)](?=\s*[；;，,。]|$)/g, "")
+          .replace(/\s+([；;，,。])/g, "$1");
+      }
+      return text.trim();
+    }
+
+    function setStatus(message, kind = "info") {
+      const node = document.querySelector("[data-r106-import-status]");
+      if (!node) return;
+      node.textContent = message;
+      node.setAttribute("data-r106-status-kind", kind);
+    }
+
+    function setFileName(message) {
+      const node = document.querySelector("[data-r104b-file-name]");
+      if (node) node.textContent = message;
+    }
+
+    function selectedBackendFile() {
+      return window.__R108_SELECTED_BACKEND_FILE__ || null;
+    }
+
+    function rememberBackendFile(file) {
+      const ext = (file.name.split(".").pop() || "").toLowerCase();
+      window.__R108_SELECTED_BACKEND_FILE__ = file;
+      window.__R106_IMPORT_SOURCE__ = {
+        type: "backend_document_file_pending",
+        label: `${ext.toUpperCase()} 文档`,
+        file_name: file.name,
+        readable: false,
+        backend_route: ROUTE,
+        preview_only: true,
+        formal_apply: false
+      };
+      window.setTimeout(() => {
+        window.__R106_IMPORT_SOURCE__ = {
+          type: "backend_document_file_pending",
+          label: `${ext.toUpperCase()} 文档`,
+          file_name: file.name,
+          readable: false,
+          backend_route: ROUTE,
+          preview_only: true,
+          formal_apply: false
+        };
+        setFileName(`已选择：${file.name}（点击生成字段预览后解析）`);
+        setStatus("已选择 Word/PDF 文档。点击“生成字段预览”后调用本地解析服务；当前不保存、不写库。", "ready");
+        const area = document.querySelector("[data-r104b-import-text]");
+        if (area && /^已选择.+尚未接入/.test(area.value || "")) {
+          area.value = `已选择 ${file.name}。\n点击“生成字段预览”后会调用本地 MarkItDown 解析服务；如果服务未启动，可先粘贴教案正文。`;
+        }
+      }, 0);
+    }
+
+    function clearBackendFile() {
+      window.__R108_SELECTED_BACKEND_FILE__ = null;
+    }
+
+    function endpointCandidates() {
+      const urls = [];
+      const params = new URLSearchParams(window.location.search || "");
+      const explicitBase = params.get("uploadApiBase") || params.get("apiBase") || "";
+      const cleanedBase = explicitBase.replace(/\/+$/, "");
+      if (/^https?:\/\/(?:127\.0\.0\.1|localhost):\d+$/i.test(cleanedBase)) {
+        urls.push(`${cleanedBase}${ROUTE}`);
+      }
+      if (location.protocol !== "file:") urls.push(`${location.origin}${ROUTE}`);
+      urls.push(`http://127.0.0.1:8082${ROUTE}`);
+      urls.push(`http://127.0.0.1:18082${ROUTE}`);
+      urls.push(`http://127.0.0.1:5177${ROUTE}`);
+      return [...new Set(urls)];
+    }
+
+    function teacherDraftModelEnabled() {
+      const node = document.querySelector("[data-r110-teacher-draft-model]");
+      return Boolean(node && node.checked);
+    }
+
+    async function postDocument(file) {
+      let lastError = null;
+      for (const url of endpointCandidates()) {
+        const data = new FormData();
+        data.append("file", file, file.name);
+        if (teacherDraftModelEnabled()) {
+          data.append("enable_r200b_candidate_reasoning", "1");
+        }
+        try {
+          const response = await fetch(url, { method: "POST", body: data });
+          let payload = null;
+          try {
+            payload = await response.json();
+          } catch (error) {
+            payload = { ok: false, teacher_visible_message: "解析服务返回了非 JSON 内容。" };
+          }
+          if (response.ok && payload?.ok) return { payload, endpoint: url };
+          lastError = payload?.teacher_visible_message || payload?.error_code || `HTTP ${response.status}`;
+        } catch (error) {
+          lastError = error?.message || String(error);
+        }
+
+===== R97B backend payload render path, around lines 28869-29230 =====
+      };
+    }
+
+    function renderBackendP6TemplateStep(step, index, payload) {
+      const normalizedEpisode = r97bP2NormalizeUploadedProcessStep(step, index, payload);
+      return renderUnifiedLessonProcessStep(normalizedEpisode, { route: "uploaded_lesson" });
+    }
+
+    function renderBackendEpisodes(steps, payload) {
+      const section = document.getElementById("nb-section-teaching-process");
+      if (!section) return false;
+      section.classList.add("r104c-imported-section");
+      const title = section.querySelector(".nb-doc-title");
+      if (title) {
+        title.querySelectorAll(".r104c-slot-badge, .r108-document-source").forEach((item) => item.remove());
+        title.insertAdjacentHTML("beforeend", `<span class="r104c-slot-badge">上传教案接入</span>`);
+      }
+      const container = section.querySelector(".nb-readable-process") || section;
+      container.classList.add("r114e-original-template-process");
+      container.setAttribute("data-r108-backend-episode-list", "true");
+      container.setAttribute("data-r114e-original-template-process", "true");
+      container.setAttribute("data-r97b-p2-shared-p6-template", "true");
+      container.innerHTML = steps.map((step, index) => renderBackendP6TemplateStep(step, index, payload)).join("");
+      return true;
+    }
+
+    function r97bP2BSingleLessonTemplateFromPayload(payload, current) {
+      const template =
+        payload?.single_lesson_template ||
+        payload?.prep_view_patch?.single_lesson_template ||
+        current?.single_lesson_template ||
+        null;
+      if (!template || template.template_type !== "single_lesson_template") return null;
+      return Array.isArray(template.process_episodes) ? template : null;
+    }
+
+    function r97bP2BTemplateEpisodes(template, routeFallback = "uploaded_lesson") {
+      if (!template || !Array.isArray(template.process_episodes)) return [];
+      return template.process_episodes.map((episode, index) => ({
+        ...episode,
+        route: episode.route || template.route || routeFallback,
+        source_status: episode.source_status || episode.provenance || template.source_status || "needs_teacher_confirm",
+        episode_id: episode.episode_id || `T${String(index + 1).padStart(2, "0")}`,
+        anchor_id: episode.anchor_id || episode.episode_id || `T${String(index + 1).padStart(2, "0")}`,
+        episode_index: episode.episode_index || index + 1,
+        teacher_review_required: episode.teacher_review_required !== false,
+        preview_only: episode.preview_only !== false
+      }));
+    }
+
+    function renderSingleLessonTemplateEpisodes(template, payload) {
+      const section = document.getElementById("nb-section-teaching-process");
+      if (!section) return false;
+      const episodes = r97bP2BTemplateEpisodes(template, payload?.viewmodel_type === "prep_room_single_lesson_readonly" ? "free_lesson" : "uploaded_lesson");
+      if (!episodes.length) return false;
+      section.classList.add("r104c-imported-section");
+      section.setAttribute("data-r97b-p2b-single-template-section", "true");
+      const title = section.querySelector(".nb-doc-title");
+      if (title) {
+        title.querySelectorAll(".r104c-slot-badge, .r108-document-source").forEach((item) => item.remove());
+        title.insertAdjacentHTML("beforeend", `<span class="r104c-slot-badge">统一模板接入</span>`);
+      }
+      const container = section.querySelector(".nb-readable-process") || section;
+      container.classList.add("r114e-original-template-process");
+      container.setAttribute("data-r97b-p2b-single-template-process", "true");
+      container.setAttribute("data-r97b-p2b-backend-template-object", "true");
+      container.setAttribute("data-r97b-p2b-legacy-process-steps-compatibility-only", "true");
+      container.innerHTML = episodes.map((episode) => renderUnifiedLessonProcessStep(episode, { route: episode.route || "uploaded_lesson" })).join("");
+      window.__R97B_P2B_LAST_TEMPLATE_EPISODES__ = episodes;
+      return true;
+    }
+
+    function r97bP2BStepTitle(step, index) {
+      return step?.title || step?.episode_title || `环节${index + 1}`;
+    }
+
+    function r97bP2BStepEpisodeId(step, index) {
+      return step?.episode_id || step?.id || `U${index + 1}`;
+    }
+
+    function updateRightRailFromBackend(payload, steps, current) {
+      const rail = document.querySelector(".courseware-rail");
+      if (!rail) return false;
+      const title = rail.querySelector(".courseware-rail-title");
+      const tag = rail.querySelector(".quiet-tag");
+      const list = rail.querySelector(".courseware-screen-list") || rail.querySelector(".r104c-right-list");
+      const firstStep = steps[0] || {};
+      const projection = payload?.import_graph_field_projection_preview || {};
+      const execution = payload?.import_teacher_execution_map_preview || {};
+      const reviewQueue = projection.teacher_review_queue || execution.teacher_review_queue || [];
+      const gapCount = steps.reduce((count, step) => count + (Array.isArray(step.source_gap_note) ? step.source_gap_note.length : 0), 0);
+      const fallbackCount = [
+        payload?.teacher_readable_quality_preview,
+        payload?.import_lesson_understanding_preview,
+        payload?.import_understanding_v2_graph_preview,
+        execution,
+        projection
+      ].filter((item) => r114eShouldDemoteType(r114ePreviewType(item))).length;
+      rail.setAttribute("data-r97b-p2-right-rail-assistant", "true");
+      rail.setAttribute("data-r97b-p2-right-rail-default-not-full-lesson-summary", "true");
+      if (title) title.textContent = "当前环节辅助";
+      if (tag) tag.textContent = "只读判断";
+      if (list) {
+        list.className = "r104c-right-list";
+        list.innerHTML = `
+          <div class="r104c-right-item" data-r97b-p2-right-kind="current_episode">
+            <span class="r104c-right-index">${esc(firstStep.episode_id || firstStep.id || "U01")}</span>
+            <div><strong>当前环节 ${r114eSourceBadge("uploaded_source")}</strong><p>${esc(firstStep.title || "先确认第一环节。")}</p></div>
+          </div>
+          <div class="r104c-right-item" data-r97b-p2-right-kind="source_status">
+            <span class="r104c-right-index">源</span>
+            <div><strong>来源统计</strong><p>环节 ${steps.length} 个；R114B ${esc(execution.status || "未返回")}；R114C ${esc(projection.status || "未返回")}。</p></div>
+          </div>
+          <div class="r104c-right-item" data-r97b-p2-right-kind="gap_fallback">
+            <span class="r104c-right-index">缺</span>
+            <div><strong>缺口 / fallback</strong><p>source gap ${gapCount} 项；fallback/需判断 ${fallbackCount} 项；确认项 ${reviewQueue.length} 条。</p></div>
+          </div>
+          <div class="r104c-right-item" data-r97b-p2-right-kind="xiaojiao_hint">
+            <span class="r104c-right-index">教</span>
+            <div><strong>小教建议</strong><p>${esc((payload?.xiaojiao_context_patch?.rows || [])[0]?.next_action_hint || firstStep.evidence || "只提示当前环节确认点，不展示完整教案摘要。")}</p></div>
+          </div>
+        `;
+      }
+      const currentBox = rail.querySelector(".courseware-rail-summary");
+      if (currentBox) currentBox.innerHTML = `<strong>当前关联</strong><br>上传文档：${esc(current.lesson_title || current.title || "未命名教案")}｜辅助判断区｜完整账本在开发折叠区`;
+      return true;
+    }
+
+    function r97bUploadedLessonLabel(current) {
+      return String(current?.lesson_title || current?.title || "上传教案").trim();
+    }
+
+    function r97bUploadedLessonContextText(current, payload, steps) {
+      const sectionText = (current?.sections || []).flatMap((section) => [
+        section?.title,
+        ...(Array.isArray(section?.items) ? section.items : []),
+        ...(Array.isArray(section?.body) ? section.body : [])
+      ]);
+      const stepText = (steps || []).flatMap((step) => [
+        step?.title,
+        step?.goal,
+        step?.source_content,
+        step?.teacher_action,
+        step?.student_action,
+        step?.evidence
+      ]);
+      return [
+        current?.lesson_title,
+        current?.title,
+        current?.eyebrow,
+        current?.unit,
+        payload?.upload_session?.file_name,
+        ...sectionText,
+        ...stepText
+      ].filter(Boolean).join(" ");
+    }
+
+    function r97bShouldCleanStaticBaselineResidue(current, payload, steps) {
+      const title = r97bUploadedLessonLabel(current);
+      const context = r97bUploadedLessonContextText(current, payload, steps);
+      if (!title && !context) return false;
+      if (/色彩的渐变|渐变的节奏/.test(title) && !R97B_QINGLV_UPLOAD_RE.test(context)) return false;
+      return R97B_QINGLV_UPLOAD_RE.test(context) || !R97B_STATIC_BASELINE_RESIDUE_RE.test(title);
+    }
+
+    function r97bEnsureStaticArchive(host, variant = "main") {
+      if (!host) return null;
+      const attr = `data-r97b-uploaded-static-archive-${variant}`;
+      let details = host.querySelector?.(`[${attr}]`) || null;
+      if (!details) {
+        details = document.createElement("details");
+        details.className = "r97b-uploaded-static-archive";
+        details.setAttribute("data-r97b-uploaded-static-archive", "true");
+        details.setAttribute(attr, "true");
+        details.innerHTML = `
+          <summary>静态旧课内容已从本次上传预览中折叠</summary>
+          <div>本区只保留开发核对，不进入教师默认阅读流；当前上传课以导入文档字段和教学过程为准。</div>
+        `;
+        host.appendChild(details);
+      }
+      return details;
+    }
+
+    function r97bMoveStaticResidueNode(node, archive, reason) {
+      if (!node || !archive || archive.contains(node)) return false;
+      node.setAttribute("data-r97b-uploaded-static-residue-demoted", reason);
+      archive.appendChild(node);
+      return true;
+    }
+
+    function r97bDemoteCentralStaticResidue(current) {
+      const surface = document.querySelector(".nb-doc-body-surface");
+      if (!surface) return 0;
+      const uploadedIds = new Set((current?.sections || []).map((section) => String(section?.id || "")).filter(Boolean));
+      uploadedIds.add("teaching-process");
+      const archive = r97bEnsureStaticArchive(surface, "main");
+      let count = 0;
+      surface.querySelectorAll(":scope > .nb-doc-section[id^='nb-section-']").forEach((section) => {
+        if (section.closest("[data-r97b-uploaded-static-archive]")) return;
+        const id = String(section.id || "").replace(/^nb-section-/, "");
+        const wasUpdated = uploadedIds.has(id) || section.classList.contains("r104c-imported-section");
+        const text = section.textContent || "";
+        if (!wasUpdated) {
+          const reason = R97B_STATIC_BASELINE_RESIDUE_RE.test(text)
+            ? `section:${id || "unknown"}`
+            : `unmatched-static-section:${id || "unknown"}`;
+          if (r97bMoveStaticResidueNode(section, archive, reason)) count += 1;
+        }
+      });
+      document.querySelectorAll(".nb-workspace > section").forEach((section) => {
+        if (section.closest("[data-r97b-uploaded-static-archive]")) return;
+        if (section.querySelector(".nb-flow")) {
+          if (r97bMoveStaticResidueNode(section, archive, "lesson-flow")) count += 1;
+        }
+      });
+      if (!count && archive && archive.children.length <= 2) archive.remove();
+      return count;
+    }
+
+    function r97bUpdateUploadedLessonTreeContext(current, payload) {
+      const panel = document.querySelector(".nb-panel");
+      const tree = panel?.querySelector(".nb-tree");
+      if (!panel || !tree) return false;
+      panel.querySelectorAll(".nb-tree-button.active").forEach((button) => {
+        button.classList.remove("active");
+        button.setAttribute("aria-current", "false");
+      });
+      let marker = panel.querySelector("[data-r97b-uploaded-tree-marker]");
+      if (!marker) {
+        marker = document.createElement("div");
+        marker.className = "r97b-uploaded-tree-marker";
+        marker.setAttribute("data-r97b-uploaded-tree-marker", "true");
+        tree.insertAdjacentElement("beforebegin", marker);
+      }
+      const fileName = payload?.upload_session?.file_name ? `来源：${payload.upload_session.file_name}` : "上传文档只读预览";
+      marker.innerHTML = `
+        <span>当前导入预览</span>
+        <strong>${esc(r97bUploadedLessonLabel(current))}</strong>
+        <span>${esc(current?.eyebrow || current?.unit || current?.grade || fileName)} · ${esc(fileName)}</span>
+      `;
+      return true;
+    }
+
+    function r97bDemoteRightRailStaticResidue() {
+      const rail = document.querySelector(".courseware-rail");
+      if (!rail) return 0;
+      let count = 0;
+      rail.querySelectorAll("[data-r114e-legacy-shell]").forEach((details) => {
+        details.open = false;
+        details.setAttribute("data-r97b-uploaded-static-residue-demoted", "legacy-p6-shell");
+      });
+      const archive = r97bEnsureStaticArchive(rail, "rail");
+      rail.querySelectorAll(".r97a3-rail-panel, .courseware-screen-list, .courseware-current-link").forEach((node) => {
+        if (node.closest("[data-r97b-uploaded-static-archive]")) return;
+        if (node.matches(".r104c-right-list")) return;
+        if (node.matches(".courseware-screen-list, .courseware-current-link") || R97B_STATIC_BASELINE_RESIDUE_RE.test(node.textContent || "")) {
+          if (r97bMoveStaticResidueNode(node, archive, "right-rail-static")) count += 1;
+        }
+      });
+      if (!count && archive && archive.children.length <= 2) archive.remove();
+      return count;
+    }
+
+    function r97bRemoveStaticBottomContextResidue() {
+      let count = 0;
+      document.querySelectorAll(".r97a3-bottom-context, .r97b-bottom-context").forEach((node) => {
+        node.remove();
+        count += 1;
+      });
+      return count;
+    }
+
+    function r97bCleanupUploadedStaticResidue(current, payload, steps) {
+      if (!r97bShouldCleanStaticBaselineResidue(current, payload, steps)) {
+        return { active: false, central_demoted: 0, right_rail_demoted: 0, bottom_removed: 0, tree_context_marked: false };
+      }
+      document.documentElement.setAttribute("data-r97b-uploaded-lesson-active", "true");
+      const central = r97bDemoteCentralStaticResidue(current);
+      const rightRail = r97bDemoteRightRailStaticResidue();
+      const bottom = r97bRemoveStaticBottomContextResidue();
+      const tree = r97bUpdateUploadedLessonTreeContext(current, payload);
+      const result = {
+        active: true,
+        baseline: "R97B_current_color_gradient_baseline",
+        policy: "uploaded lesson owns teacher-visible flow; static baseline folds to developer archive",
+        central_demoted: central,
+        right_rail_demoted: rightRail,
+        bottom_removed: bottom,
+        tree_context_marked: tree,
+        preview_only: true,
+        formal_apply: false,
+        database_written: false
+      };
+      window.__R97B_UPLOADED_STATIC_RESIDUE_CLEANUP__ = result;
+      document.documentElement.setAttribute("data-r97b-uploaded-static-residue-cleanup", "true");
+      return result;
+    }
+
+    function updateBottomXiaojiaoFromBackend(steps, current, payload) {
+      const composer = document.querySelector(".composer") || document.querySelector("[data-chat-input]")?.closest("section, div");
+      if (!composer) return false;
+      let summary = document.querySelector("[data-r104c-bottom-context]");
+      if (!summary) {
+        summary = document.createElement("div");
+        summary.className = "r104c-parser-summary";
+        summary.setAttribute("data-r104c-bottom-context", "true");
+        composer.insertAdjacentElement("beforebegin", summary);
+      }
+      const first = steps[0] || {};
+      const r114Steps = r114dAgentSteps(payload || {});
+      const lastDone = [...r114Steps].reverse().find((step) => ["completed", "done"].includes(step.status));
+      const record = payload?.preview_test_record || {};
+      const recordText = record.record_id ? ` 测试记录：${esc(record.record_id)}。` : "";
+      summary.innerHTML = `小教上下文：正在预览上传文档《${esc(current.lesson_title || current.title || "未命名教案")}》，默认关注 ${esc(first.episode_id || first.id || "U01")} ${esc(first.title || "第一环节")}。导入理解进度：${esc(lastDone?.label || "字段候选待确认")}。${recordText}不调用 runtime，不写入正式备课本。`;
+      return true;
+    }
+
+    function applyBackendPayload(payload, endpoint) {
+      const current = payload?.prep_view_patch?.current_lesson;
+      if (!current) throw new Error("解析成功但缺少 current_lesson ViewModel。");
+      const legacySteps = Array.isArray(current.process_steps) ? current.process_steps : [];
+      const singleLessonTemplate = r97bP2BSingleLessonTemplateFromPayload(payload, current);
+      const templateEpisodes = r97bP2BTemplateEpisodes(singleLessonTemplate, payload?.viewmodel_type === "prep_room_single_lesson_readonly" ? "free_lesson" : "uploaded_lesson");
+      const steps = legacySteps.length ? legacySteps : templateEpisodes;
+      updateHeroFromViewModel(current, payload.upload_session);
+      (current.sections || []).forEach(updateSectionFromViewModel);
+      if (singleLessonTemplate && templateEpisodes.length) {
+        renderSingleLessonTemplateEpisodes(singleLessonTemplate, payload);
+      } else {
+        renderBackendEpisodes(legacySteps, payload);
+      }
+      updateRightRailFromBackend(payload, steps, current);
+      r114eDemoteLegacyP6Rail();
+      renderBanner(payload, current, steps, endpoint);
+      renderR114DAgentSteps(payload, current);
+      renderTeacherReadableDraft(payload, current);
+      renderR114DUnderstandingPanel(payload, current);
+      renderR114EProvenanceLedger(payload, current, steps);
+      updateBottomXiaojiaoFromBackend(steps, current, payload);
+      const staticResidueCleanup = r97bCleanupUploadedStaticResidue(current, payload, steps);
+      const parsedForExistingTools = {
+        title: current.lesson_title || current.title || "上传教案",
+        unit: current.eyebrow || "",
+        grade: current.grade || "",
+        episodes: steps.map((step, index) => ({
+          id: r97bP2BStepEpisodeId(step, index),
+          title: r97bP2BStepTitle(step, index),
+          body: step.source_content || step.goal || step.episode_goal || "",
+          teacher_action: step.teacher_action || (Array.isArray(step.teacher_organization) ? step.teacher_organization.join("；") : ""),
+          student_output: step.student_action || step.student_learning || "",
+          evidence: Array.isArray(step.evidence) ? step.evidence.join("；") : (step.evidence || ""),
+          micro_steps: Array.isArray(step.micro_steps) ? step.micro_steps : r97bP2ProjectedExistingMicroSteps(step, index, r97bP2UploadedExistingSourceType(step)),
+          scaffolds_generated: false,
+          adapter_completion_policy: singleLessonTemplate ? "single_lesson_template" : "project_existing_fields_only"
+        }))
+      };
+      window.__R104D_IMPORT_STATE__ = {
+        parsed: parsedForExistingTools,
+        preview_only: true,
+        formal_apply: false,
+        stage: STAGE
+      };
+      window.__R108_BACKEND_DOCUMENT_PREVIEW__ = {
+        stage: STAGE,
+        endpoint,
+        file_name: payload.upload_session?.file_name || "",
+        viewmodel_id: payload.viewmodel_id,
+        episode_count: steps.length,
+        teacher_readable_status: payload.teacher_readable_quality_preview?.status || "",
+        lesson_understanding_status: payload.import_lesson_understanding_preview?.status || "",
+        understanding_v2_graph_status: payload.import_understanding_v2_graph_preview?.status || "",
+        teacher_execution_map_status: payload.import_teacher_execution_map_preview?.status || "",
+        graph_field_projection_status: payload.import_graph_field_projection_preview?.status || "",
+        field_reasoning_status: payload.import_field_reasoning_preview?.status || "",
+        r114c_field_count: Object.keys(payload.import_graph_field_projection_preview?.field_candidates || {}).length,
+        r114c_process_step_count: payload.import_graph_field_projection_preview?.process_projection?.process_step_count || 0,
+        field_projection_applied_to_current_lesson: Boolean(payload.import_graph_field_projection_preview?.boundary?.field_projection_applied_to_current_lesson),
+        model_called: Boolean(payload.teacher_readable_quality_preview?.model_called),
+        static_baseline_residue_cleanup: staticResidueCleanup,
+        preview_only: true,
+        formal_apply: false
+      };
+      window.__R97B_P2H_RUNTIME_PROGRESS_EVENT_STREAM__ = {
+        stage: "1013R_R97B_P2H_RUNTIME_PROGRESS_EVENT_STREAM",
+        runtime_progress_events: Array.isArray(payload.runtime_progress_events) ? payload.runtime_progress_events : [],
+        event_count: Array.isArray(payload.runtime_progress_events) ? payload.runtime_progress_events.length : 0,
+        rendered_in_trace_panel: Boolean(document.querySelector("[data-r114d-agent-steps]")),
+        source: "backend_runtime_progress_events",
+        raw_chain_of_thought_exposed: false,
+        template_field_written: false,
