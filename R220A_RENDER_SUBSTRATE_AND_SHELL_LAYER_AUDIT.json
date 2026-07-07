@@ -1,0 +1,79 @@
+{
+  "stage": "1013R_R220A_RENDER_SUBSTRATE_AND_SHELL_LAYER_AUDIT",
+  "date": "2026-07-08",
+  "status": "PASS_WITH_NOTES",
+  "scope": "readonly audit package for GPT review before shell-layer implementation",
+  "primary_conclusion": "The local render substrate exists as a layered substrate. The next code target should be the current R97B working shell, not R36, M1, R100-P1, or a new HTML page.",
+  "main_code_line": {
+    "target": "outputs/PREP_ROOM_RENDER_CANVAS_DEEPEN_V1/1013R_R97B_TEACHER_SHELL_EXPERIENCE_POLISH_AND_STALE_CONTENT_CLEANUP/r97b_clean_shell_context_preview.html",
+    "allowed_next_step": "R220B shell-layer slot ownership binding only",
+    "forbidden": [
+      "new_html_shell",
+      "field_rendering_first",
+      "R21_modification",
+      "R36_modification",
+      "R100_P1_as_current_shell",
+      "formal_apply",
+      "database_write",
+      "memory_write",
+      "feishu_write",
+      "provider_or_model_call"
+    ]
+  },
+  "readonly_contract_line_a": {
+    "role": "backend and render contract substrate",
+    "files": [
+      "backend/xiaobei_ai/prep_room_render_shell_registry_1013L_R0.py",
+      "backend/xiaobei_ai/prep_room_main_shell_fetch_adapter_1013L_R5.py",
+      "docs/prep-room-render-surface-map.md",
+      "backend/xiaobei_ai/prep_room_unified_viewmodel_1013R_R15.py",
+      "backend/xiaobei_ai/prep_room_render_blocks_protocol_1013R_R17.py",
+      "backend/xiaobei_ai/prep_room_render_block_component_boundary_1013R_R24.py",
+      "docs/1013R_R30_visible_frame_connector.md"
+    ],
+    "status": "readonly"
+  },
+  "readonly_contract_line_b": {
+    "role": "historical shell lineage and handoff evidence",
+    "files": [
+      "outputs/PREP_ROOM_RENDER_CANVAS_DEEPEN_V1/1013L_M1_canonical_main_shell_milestone/1013L_M1_report.md",
+      "outputs/PREP_ROOM_RENDER_CANVAS_DEEPEN_V1/1013L_R36_existing_page_static_patch_consolidation/1013L_R36_report.md",
+      "docs/handoff/1013R_R108_prep_room_import_shell_handoff_20260705.md"
+    ],
+    "status": "readonly"
+  },
+  "route_evidence": {
+    "registered_routes": [
+      "/api/prep-room/render-shell/registry",
+      "/api/prep-room/render-shell/state/<state_id>",
+      "/api/prep-room/main-shell/viewmodel",
+      "/api/prep-room/main-shell/viewmodel/state/<state_id>"
+    ],
+    "r97b_backend_preview_route": "/api/prep-room/uploaded-lesson-document-preview"
+  },
+  "r97b_existing_entrypoints": [
+    "applyBackendPayload(payload, endpoint)",
+    "renderSingleLessonTemplateEpisodes(template, payload)",
+    "renderUnifiedLessonProcessStep(episode, renderMode)",
+    "updateRightRailFromBackend(payload, steps, current)",
+    "updateBottomXiaojiaoFromBackend(steps, current, payload)"
+  ],
+  "known_gaps_before_field_rendering": [
+    "right rail has assistant/status behavior but not a complete shell-layer slot contract",
+    "bottom Xiaojiao shows upload-preview context but not a precise selected-slot contract",
+    "single_lesson_template process episodes are preferred, while non-process sections still flow mainly through current.sections",
+    "shell layers need ownership markers and resolver checks before field rendering"
+  ],
+  "recommended_next_stage": {
+    "stage": "1013R_R220B_R97B_SHELL_LAYER_SLOT_OWNERSHIP_BINDING",
+    "description": "Add readonly shell-layer ownership markers and resolver checks to the existing R97B shell without changing rendering semantics.",
+    "validation": [
+      "R97B shell remains the only code target",
+      "upload preview route is unchanged",
+      "applyBackendPayload still exists",
+      "right rail and bottom Xiaojiao are addressable as shell surfaces",
+      "no formal apply or writes are introduced"
+    ]
+  }
+}
+
